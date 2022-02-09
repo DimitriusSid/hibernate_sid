@@ -1,51 +1,43 @@
 package com.sid.hibernate;
 
-import com.sid.hibernate.converter.BirthdayConverter;
-import com.sid.hibernate.entity.Birthday;
-import com.sid.hibernate.entity.Role;
 import com.sid.hibernate.entity.User;
-
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import com.sid.hibernate.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy;
-import org.hibernate.cfg.Configuration;
-
-import java.time.LocalDate;
-
+import org.hibernate.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HibernateRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(HibernateRunner.class);
+
     public static void main(String[] args) {
 
-        Configuration configuration = new Configuration();
-        configuration.setPhysicalNamingStrategy(new CamelCaseToUnderscoresNamingStrategy());
-        configuration.addAttributeConverter(new BirthdayConverter());
-        configuration.registerTypeOverride(new JsonBinaryType());
+        User user = User.builder()
+                .username("ivan@gmail.com")
+                .lastname("Ivanov")
+                .firstname("Ivan")
+                .build();
 
+        log.info("User entity is in transient state, object: {}", user);
 
-        configuration.configure();
+        try (SessionFactory sessionFactory = HibernateUtil.buildSessionFactory()) {
+            Session session1 = sessionFactory.openSession();
+            try (session1) {
+                Transaction transaction = session1.beginTransaction();
+                log.trace("Transaction is created, {}", transaction);
 
-        try (SessionFactory sessionFactory = configuration.buildSessionFactory();
-             Session session = sessionFactory.openSession()) {
-            session.beginTransaction();
-            User user = User.builder()
-                    .username("ivan1@gmail.com")
-                    .firstname("Ivan")
-                    .lastname("Ivanov")
-                    .info("""
-                            {
-                            "name" : "Ivan", 
-                            "id" : 25
-                            }
-                            """)
-                    .birthDate(new Birthday(LocalDate.of(2000, 1, 19)))
-                    .role(Role.ADMIN)
-                    .build();
+                session1.saveOrUpdate(user);
+                log.trace("User is in persistent state: {}, session {}", user, session1);
 
-
-            session.save(user);
-            session.getTransaction().commit();
-
+                session1.getTransaction().commit();
+            }
+            log.warn("User is in detached state: {}, session is closed {}", user, session1);
+        } catch (Exception e) {
+            log.error("Exception occurred", e);
+            throw e;
         }
+
     }
 }
