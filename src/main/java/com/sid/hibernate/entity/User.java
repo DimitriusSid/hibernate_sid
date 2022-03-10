@@ -1,6 +1,5 @@
 package com.sid.hibernate.entity;
 
-import com.sid.hibernate.converter.BirthdayConverter;
 import lombok.*;
 import org.hibernate.annotations.Type;
 
@@ -16,6 +15,12 @@ import javax.persistence.*;
 public class User {
 
     @Id
+    @GeneratedValue(generator = "user_gen", strategy = GenerationType.TABLE)
+//    @SequenceGenerator(name = "user_gen", sequenceName = "users_id_seq", allocationSize = 1)
+    @TableGenerator(name = "user_gen", table = "all_sequence", allocationSize = 1, pkColumnName = "table_name", valueColumnName = "pk_value")
+    private Long id;
+
+    @Column(unique = true)
     private String username;
 
     @Embedded
